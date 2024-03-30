@@ -31,7 +31,7 @@ def main(evidence_file, golden_file):
 
     assert len(predictions) == len(actual), "The two file provided does not have the same number of lines"
 
-    score,_,precision,recall,f1 = fever_score(predictions, actual)
+    score,acc,precision,recall,f1 = fever_score(predictions, actual)
 
     tab = PrettyTable()
     tab.field_names = ["OFEVER Score", "Evidence Precision", "Evidence Recall", "Evidence F1"]

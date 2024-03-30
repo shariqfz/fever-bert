@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 if __name__ == "__main__":
-    from common.fever_model import main
+    import os
+    import sys
+    sys.path.append(os.getcwd())
+    from utils.fever_model import main
 
     main()

@@ -4,6 +4,9 @@ import argparse
 import re
 import json
 import os
+import sys
+sys.path.append(os.getcwd())
+
 import unicodedata
 import random
 from collections import defaultdict
@@ -12,7 +15,7 @@ from functools import reduce
 import numpy as np
 from tqdm import tqdm
 
-from common.fever_doc_db import FeverDocDB
+from utils.fever_doc_db import FeverDocDB
 
 
 def get_all_sentences(docs, weighted_sentences):
