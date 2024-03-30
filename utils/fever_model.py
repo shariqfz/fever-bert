@@ -12,6 +12,9 @@ import argparse
 import glob
 import logging
 import os
+import sys
+sys.path.append(os.getcwd())
+
 import random
 import json
 
@@ -50,15 +53,15 @@ from transformers import (WEIGHTS_NAME, BertConfig,
 
 from transformers import AdamW, get_linear_schedule_with_warmup
 
-from common.fever_processors import fever_compute_metrics as compute_metrics
-from common.fever_processors import fever_output_modes as output_modes
-from common.fever_processors import fever_processors as processors
-from common.fever_processors import fever_convert_examples_to_features as convert_examples_to_features
+from utils.fever_processors import fever_compute_metrics as compute_metrics
+from utils.fever_processors import fever_output_modes as output_modes
+from utils.fever_processors import fever_processors as processors
+from utils.fever_processors import fever_convert_examples_to_features as convert_examples_to_features
 
 logger = logging.getLogger(__name__)
 
-ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig, XLNetConfig, XLMConfig,
-                                                                                RobertaConfig, DistilBertConfig, AlbertConfig, XLMRobertaConfig)), ())
+# ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig, XLNetConfig, XLMConfig,
+#                                                                                 RobertaConfig, DistilBertConfig, AlbertConfig, XLMRobertaConfig)), ())
 
 MODEL_CLASSES = {
     "bert": (BertConfig, BertForSequenceClassification, BertTokenizer),
@@ -389,7 +392,7 @@ def main():
     parser.add_argument("--model_type", default=None, type=str, required=True,
                         help="Model type selected in the list: " + ", ".join(MODEL_CLASSES.keys()))
     parser.add_argument("--model_name_or_path", default=None, type=str, required=True,
-                        help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS))
+                        help="Path to pre-trained model or shortcut name selected in the list: " + ",\" .join(ALL_MODELS")
     parser.add_argument("--task_name", default=None, type=str, required=True,
                         help="The name of the task to train selected in the list: " + ", ".join(processors.keys()))
     parser.add_argument("--output_dir", default=None, type=str, required=True,

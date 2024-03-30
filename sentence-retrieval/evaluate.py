@@ -3,10 +3,12 @@
 import argparse
 import json
 import os
+import sys
+sys.path.append(os.getcwd())
 
 from collections import defaultdict
 
-from fever.scorer import fever_score
+from utils.scorer import fever_score
 from prettytable import PrettyTable
 
 def main(evidence_file, golden_file):

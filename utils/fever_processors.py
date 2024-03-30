@@ -7,6 +7,9 @@
 import csv
 import logging
 import os
+import sys
+sys.path.append(os.getcwd())
+
 import re
 
 import numpy as np

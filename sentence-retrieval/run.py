@@ -5,6 +5,9 @@ import bisect
 import csv
 import json
 import os
+import sys
+sys.path.append(os.getcwd())
+
 from collections import defaultdict
 from functools import reduce
 
