@@ -370,6 +370,7 @@ function claim_verification() {
     python3 'claim-verification/model.py' \
         --model_type "$model_type" \
         --model_name_or_path "$model_name" \
+        --weight_sharing "$weight_sharing" \
         --max_seq_length 128 \
         --task_name 'claim_verification' \
         --output_dir "$model_path" \
@@ -406,6 +407,7 @@ function claim_verification() {
           python3 'claim-verification/model.py' \
               --model_type "$model_type" \
               --model_name_or_path "$model_name" \
+              --weight_sharing "$weight_sharing" \
               --max_seq_length 128 \
               --task_name 'claim_verification' \
               --output_dir "$model_path" \
