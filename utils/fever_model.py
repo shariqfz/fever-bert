@@ -596,7 +596,7 @@ def main():
     #     torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
 
     model.to(args.device)
-    logger.info(f"Model: {args.model_name} weight_sharing: {args.weight_sharing} ")
+    logger.info(f"Model: {args.model_type} weight_sharing: {args.weight_sharing} ")
     logger.info("Training/evaluation parameters %s", args)
 
     # Training
