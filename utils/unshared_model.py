@@ -34,8 +34,9 @@ class UnsharedModel(nn.Module):
         output1 = self.encoder1(input_ids=input_ids1, token_type_ids=token_type_ids1, attention_mask=attention_mask1)[1]
         output2 = self.encoder2(input_ids=input_ids2, token_type_ids=token_type_ids2, attention_mask=attention_mask2)[1]
         output = torch.cat((output1, output2), dim=1)
-        loss = nn.CrossEntropyLoss()(output, labels)
-        return loss, self.classifier(output)
+        logits = self.classifier(output)
+        loss = nn.CrossEntropyLoss()(logits.view(-1, self.classifier[-1].out_features), labels.view(-1))
+        return loss, logits
 
 # Load the BERT tokenizer
 # tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
