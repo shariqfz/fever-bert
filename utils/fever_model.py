@@ -157,6 +157,8 @@ def train(args, model, tokenizer):
                           "input_ids2":      batch[0][1].long().to(args.device),
                         "attention_mask1": batch[1][0].to(args.device),
                         "attention_mask2": batch[1][1].to(args.device),
+                        "token_type_ids1" : batch[2][0].long().to(args.device),
+                        "token_type_ids2" : batch[2][1].long().to(args.device),
                         "labels":         batch[3].to(args.device)}
             
                 
@@ -275,6 +277,8 @@ def evaluate(args, model, tokenizer, prefix=""):
                           "input_ids2":      batch[0][1].long().to(args.device),
                         "attention_mask1": batch[1][0].to(args.device),
                         "attention_mask2": batch[1][1].to(args.device),
+                        "token_type_ids1" : batch[2][0].long().to(args.device),
+                        "token_type_ids2" : batch[2][1].long().to(args.device),
                         "labels":         batch[3].to(args.device)}
         
             outputs = model(**inputs)
