@@ -17,6 +17,20 @@ class UnsharedModel(nn.Module):
         )
 
     def forward(self, input_ids1, input_ids2, attention_mask1, attention_mask2, token_type_ids1, token_type_ids2, labels):
+        # Ensure input tensors are 2D
+        if input_ids1.dim() == 1:
+            input_ids1 = input_ids1.unsqueeze(0)
+        if input_ids2.dim() == 1:
+            input_ids2 = input_ids2.unsqueeze(0)
+        if attention_mask1.dim() == 1:
+            attention_mask1 = attention_mask1.unsqueeze(0)
+        if attention_mask2.dim() == 1:
+            attention_mask2 = attention_mask2.unsqueeze(0)
+        if token_type_ids1.dim() == 1:
+            token_type_ids1 = token_type_ids1.unsqueeze(0)
+        if token_type_ids2.dim() == 1:
+            token_type_ids2 = token_type_ids2.unsqueeze(0)
+        
         output1 = self.encoder1(input_ids=input_ids1, token_type_ids=token_type_ids1, attention_mask=attention_mask1)[1]
         output2 = self.encoder2(input_ids=input_ids2, token_type_ids=token_type_ids2, attention_mask=attention_mask2)[1]
         output = torch.cat((output1, output2), dim=1)
