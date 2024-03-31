@@ -36,22 +36,22 @@ from tqdm import tqdm, trange
 
 from transformers import (WEIGHTS_NAME, BertConfig,
                                   BertForSequenceClassification, BertTokenizer,
-                                  RobertaConfig,
-                                  RobertaForSequenceClassification,
-                                  RobertaTokenizer,
-                                  XLMConfig, XLMForSequenceClassification,
-                                  XLMTokenizer, XLNetConfig,
-                                  XLNetForSequenceClassification,
-                                  XLNetTokenizer,
-                                  DistilBertConfig,
-                                  DistilBertForSequenceClassification,
-                                  DistilBertTokenizer,
-                                  AlbertConfig,
-                                  AlbertForSequenceClassification,
-                                  AlbertTokenizer,
-                                  XLMRobertaConfig,
-                                  XLMRobertaForSequenceClassification,
-                                  XLMRobertaTokenizer,
+                                #   RobertaConfig,
+                                #   RobertaForSequenceClassification,
+                                #   RobertaTokenizer,
+                                #   XLMConfig, XLMForSequenceClassification,
+                                #   XLMTokenizer, XLNetConfig,
+                                #   XLNetForSequenceClassification,
+                                #   XLNetTokenizer,
+                                #   DistilBertConfig,
+                                #   DistilBertForSequenceClassification,
+                                #   DistilBertTokenizer,
+                                #   AlbertConfig,
+                                #   AlbertForSequenceClassification,
+                                #   AlbertTokenizer,
+                                #   XLMRobertaConfig,
+                                #   XLMRobertaForSequenceClassification,
+                                #   XLMRobertaTokenizer,
                                 )
 
 from transformers import AdamW, get_linear_schedule_with_warmup
@@ -60,6 +60,7 @@ from utils.fever_processors import fever_compute_metrics as compute_metrics
 from utils.fever_processors import fever_output_modes as output_modes
 from utils.fever_processors import fever_processors as processors
 from utils.fever_processors import fever_convert_examples_to_features as convert_examples_to_features
+from utils.unshared_model import UnsharedModel
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +68,7 @@ logger = logging.getLogger(__name__)
 #                                                                                 RobertaConfig, DistilBertConfig, AlbertConfig, XLMRobertaConfig)), ())
 
 MODEL_CLASSES = {
-    "bert": (BertConfig, BertForSequenceClassification, BertTokenizer),
-    "xlnet": (XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer),
-    "xlm": (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
-    "roberta": (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer),
-    "distilbert": (DistilBertConfig, DistilBertForSequenceClassification, DistilBertTokenizer),
-    "albert": (AlbertConfig, AlbertForSequenceClassification, AlbertTokenizer),
-    "xlmroberta": (XLMRobertaConfig, XLMRobertaForSequenceClassification, XLMRobertaTokenizer),
+    "bert": (BertConfig, BertForSequenceClassification, BertTokenizer)
 }
 
 
@@ -151,11 +146,20 @@ def train(args, model, tokenizer):
         epoch_iterator = tqdm(train_dataloader, desc=bar_desc, disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
             model.train()
-            inputs = {"input_ids":      batch[0].long().to(args.device),
-                      "attention_mask": batch[1].to(args.device),
-                      "labels":         batch[3].to(args.device)}
-            if args.model_type != "distilbert":
-                inputs["token_type_ids"] = batch[2].long().to(args.device) if args.model_type in ["bert", "xlnet", "albert"] else None  # XLM, DistilBERT, RoBERTa, and XLM-RoBERTa don't use segment_ids
+            if args.weight_sharing == "shared":
+                inputs = {"input_ids":      batch[0].long().to(args.device),
+                        "attention_mask": batch[1].to(args.device),
+                        "token_type_ids" : batch[2].long().to(args.device), 
+                        "labels":         batch[3].to(args.device)}
+            
+            elif args.weight_sharing == "unshared":
+                inputs = {"input_ids1":      batch[0][0].long().to(args.device),
+                          "input_ids2":      batch[0][1].long().to(args.device),
+                        "attention_mask1": batch[1][0].to(args.device),
+                        "attention_mask2": batch[1][1].to(args.device),
+                        "labels":         batch[3].to(args.device)}
+            
+                
             outputs = model(**inputs)
             loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
 
@@ -205,9 +209,15 @@ def train(args, model, tokenizer):
                     output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(global_step))
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir)
-                    model_to_save = model.module if hasattr(model, "module") else model  # Take care of distributed/parallel training
-                    model_to_save.save_pretrained(output_dir)
-                    torch.save(args, os.path.join(output_dir, "training_args.bin"))
+                    if args.weight_sharing == "shared":
+                        model_to_save = model.module if hasattr(model, "module") else model  # Take care of distributed/parallel training
+                        model_to_save.save_pretrained(output_dir)
+                        torch.save(args, os.path.join(output_dir, "training_args.bin"))
+
+                    elif args.weight_sharing == "unshared":
+                        torch.save(model.state_dict(), args.output_dir)
+                        torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+                    
                     logger.info("Saving model checkpoint to %s", output_dir)
 
             if args.max_steps > 0 and global_step > args.max_steps:
@@ -254,11 +264,19 @@ def evaluate(args, model, tokenizer, prefix=""):
         model.eval()
 
         with torch.no_grad():
-            inputs = {"input_ids":      batch[0].long().to(args.device),
-                      "attention_mask": batch[1].to(args.device),
-                      "labels":         batch[3].to(args.device)}
-            if args.model_type != "distilbert":
-                inputs["token_type_ids"] = batch[2].long().to(args.device) if args.model_type in ["bert", "xlnet", "albert"] else None  # XLM, DistilBERT, RoBERTa, and XLM-RoBERTa don't use segment_ids
+            if args.weight_sharing == "shared":
+                inputs = {"input_ids":      batch[0].long().to(args.device),
+                        "attention_mask": batch[1].to(args.device),
+                        "token_type_ids" : batch[2].long().to(args.device), 
+                        "labels":         batch[3].to(args.device)}
+            
+            elif args.weight_sharing == "unshared":
+                inputs = {"input_ids1":      batch[0][0].long().to(args.device),
+                          "input_ids2":      batch[0][1].long().to(args.device),
+                        "attention_mask1": batch[1][0].to(args.device),
+                        "attention_mask2": batch[1][1].to(args.device),
+                        "labels":         batch[3].to(args.device)}
+        
             outputs = model(**inputs)
             tmp_eval_loss, logits = outputs[:2]
 
@@ -316,11 +334,19 @@ def predict(args, model, tokenizer):
         for batch in tqdm(predict_dataloader, desc="Predicting"):
             model.eval()
             with torch.no_grad():
-                inputs = {"input_ids":      batch[0].long().to(args.device),
-                          "attention_mask": batch[1].to(args.device),
-                          "labels":         batch[3].to(args.device)}
-                if args.model_type != "distilbert":
-                    inputs["token_type_ids"] = batch[2].long().to(args.device) if args.model_type in ["bert", "xlnet", "albert"] else None  # XLM, DistilBERT, RoBERTa, and XLM-RoBERTa don't use segment_ids
+                if args.weight_sharing == "shared":
+                    inputs = {"input_ids":      batch[0].long().to(args.device),
+                            "attention_mask": batch[1].to(args.device),
+                            "token_type_ids" : batch[2].long().to(args.device), 
+                            "labels":         batch[3].to(args.device)}
+                
+                elif args.weight_sharing == "unshared":
+                    inputs = {"input_ids1":      batch[0][0].long().to(args.device),
+                            "input_ids2":      batch[0][1].long().to(args.device),
+                            "attention_mask1": batch[1][0].to(args.device),
+                            "attention_mask2": batch[1][1].to(args.device),
+                            "labels":         batch[3].to(args.device)}
+                
                 outputs = model(**inputs)
                 logits = outputs[1]
 
@@ -360,21 +386,40 @@ def load_and_cache_examples(args, task, tokenizer, file_path, purpose="train"):
                                                 pad_on_left=bool(args.model_type in ["xlnet"]),                 # pad on the left for xlnet
                                                 pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
                                                 pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
+                                                weight_sharing=args.weight_sharing
         )
 
         # Convert to Tensors and build dataset
-        all_input_ids = torch.empty((num_examples, args.max_seq_length), dtype=torch.int)
-        all_attention_mask = torch.empty((num_examples, args.max_seq_length), dtype=torch.int8)
-        all_token_type_ids = torch.empty((num_examples, args.max_seq_length), dtype=torch.int8)
+        if args.weight_sharing == "shared":
+            all_input_ids = torch.empty((num_examples, args.max_seq_length), dtype=torch.int)
+            all_attention_mask = torch.empty((num_examples, args.max_seq_length), dtype=torch.int8)
+            all_token_type_ids = torch.empty((num_examples, args.max_seq_length), dtype=torch.int8)
+        elif args.weight_sharing == "unshared":
+            all_input_ids = torch.empty((num_examples, 2, args.max_seq_length), dtype=torch.int)
+            all_attention_mask = torch.empty((num_examples, 2, args.max_seq_length), dtype=torch.int8)
+            all_token_type_ids = torch.empty((num_examples, 2, args.max_seq_length), dtype=torch.int8)
+
         if output_mode == "classification":
             all_labels = torch.empty(num_examples, dtype=torch.long)
         elif output_mode == "regression":
             all_labels = torch.empty(num_examples, dtype=torch.float)
         for i, feature in enumerate(tqdm(features, desc="Example", total=num_examples)):
-            all_input_ids[i] = torch.tensor(feature.input_ids)
-            all_attention_mask[i] = torch.tensor(feature.attention_mask)
-            all_token_type_ids[i] = torch.tensor(feature.token_type_ids)
-            all_labels[i] = feature.label
+            if args.weight_sharing == "shared":
+                all_input_ids[i] = torch.tensor(feature.input_ids)
+                all_attention_mask[i] = torch.tensor(feature.attention_mask)
+                all_token_type_ids[i] = torch.tensor(feature.token_type_ids)
+                all_labels[i] = feature.label
+            elif args.weight_sharing == "unshared":
+                feature1, feature2 = feature
+                all_input_ids[i][0] = torch.tensor(feature1.input_ids)
+                all_input_ids[i][1] = torch.tensor(feature2.input_ids)
+                all_attention_mask[i][0] = torch.tensor(feature1.attention_mask)
+                all_attention_mask[i][1] = torch.tensor(feature2.attention_mask)
+                all_token_type_ids[i][0] = torch.tensor(feature1.token_type_ids)
+                all_token_type_ids[i][1] = torch.tensor(feature2.token_type_ids)
+                all_labels[i] = feature1.label
+
+            
         all_features_list = [all_input_ids, all_attention_mask, all_token_type_ids, all_labels]
 
         if args.local_rank in [-1, 0]:
@@ -396,6 +441,8 @@ def main():
                         help="Model type selected in the list: " + ", ".join(MODEL_CLASSES.keys()))
     parser.add_argument("--model_name_or_path", default=None, type=str, required=True,
                         help="Path to pre-trained model or shortcut name selected in the list: " + ",\" .join(ALL_MODELS")
+    parser.add_argument("--weight_sharing", default='shared', type=str, required=True,
+                        help="[shared | unshared]")                    
     parser.add_argument("--task_name", default=None, type=str, required=True,
                         help="The name of the task to train selected in the list: " + ", ".join(processors.keys()))
     parser.add_argument("--output_dir", default=None, type=str, required=True,
@@ -522,8 +569,8 @@ def main():
     num_labels = len(label_list)
 
     # Load pretrained model and tokenizer
-    if args.local_rank not in [-1, 0]:
-        torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
+    # if args.local_rank not in [-1, 0]:
+    #     torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
 
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
@@ -534,16 +581,22 @@ def main():
     tokenizer = tokenizer_class.from_pretrained(args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
                                                 do_lower_case=args.do_lower_case,
                                                 cache_dir=args.cache_dir if args.cache_dir else None)
-    model = model_class.from_pretrained(args.model_name_or_path,
-                                        from_tf=bool(".ckpt" in args.model_name_or_path),
-                                        config=config,
-                                        cache_dir=args.cache_dir if args.cache_dir else None)
+    if args.weight_sharing == "shared":                                            
+        model = model_class.from_pretrained(args.model_name_or_path,
+                                            from_tf=bool(".ckpt" in args.model_name_or_path),
+                                            config=config,
+                                            cache_dir=args.cache_dir if args.cache_dir else None)
+    elif args.weight_sharing == "unshared":
+        model = UnsharedModel(args.model_name_or_path,
+                            from_tf=bool(".ckpt" in args.model_name_or_path),
+                            config=config,
+                            cache_dir=args.cache_dir if args.cache_dir else None)
 
-    if args.local_rank == 0:
-        torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
+    # if args.local_rank == 0:
+    #     torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
 
     model.to(args.device)
-
+    logger.info(f"Model: {args.model_name} weight_sharing: {args.weight_sharing} ")
     logger.info("Training/evaluation parameters %s", args)
 
     # Training
@@ -560,42 +613,83 @@ def main():
         logger.info("Saving model checkpoint to %s", args.output_dir)
         # Save a trained model, configuration and tokenizer using `save_pretrained()`.
         # They can then be reloaded using `from_pretrained()`
-        model_to_save = model.module if hasattr(model, "module") else model  # Take care of distributed/parallel training
-        model_to_save.save_pretrained(args.output_dir)
-        tokenizer.save_pretrained(args.output_dir)
+        if args.weight_sharing == "shared":
+            model_to_save = model.module if hasattr(model, "module") else model  # Take care of distributed/parallel training
+            model_to_save.save_pretrained(args.output_dir)
+            tokenizer.save_pretrained(args.output_dir)
 
-        # Good practice: save your training arguments together with the trained model
-        torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+            # Good practice: save your training arguments together with the trained model
+            torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
 
-        # Load a trained model and vocabulary that you have fine-tuned
-        model = model_class.from_pretrained(args.output_dir)
-        tokenizer = tokenizer_class.from_pretrained(args.output_dir)
-        model.to(args.device)
+            # Load a trained model and vocabulary that you have fine-tuned
+            model = model_class.from_pretrained(args.output_dir)
+            tokenizer = tokenizer_class.from_pretrained(args.output_dir)
+            model.to(args.device)
+
+        elif args.weight_sharing == "unshared":
+            # Save the model
+            torch.save(model.state_dict(), args.output_dir)
+            tokenizer.save_pretrained(args.output_dir)
+            torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+            model = UnsharedModel()
+            model = model.load_state_dict(torch.load(args.output_dir))
+            tokenizer = tokenizer_class.from_pretrained(args.output_dir)
+            model.to(args.device)
+
 
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
-        tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
-        checkpoints = [args.output_dir]
-        if args.eval_all_checkpoints:
-            checkpoints = list(os.path.dirname(c) for c in sorted(glob.glob(args.output_dir + "/**/" + WEIGHTS_NAME, recursive=True)))
-            logging.getLogger("transformers.modeling_utils").setLevel(logging.WARN)  # Reduce logging
-        logger.info("Evaluate the following checkpoints: %s", checkpoints)
-        for checkpoint in checkpoints:
-            global_step = checkpoint.split("-")[-1] if len(checkpoints) > 1 else ""
-            prefix = checkpoint.split("/")[-1] if checkpoint.find("checkpoint") != -1 else ""
+        if args.weight_sharing == "shared":
+            tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
+            checkpoints = [args.output_dir]
+            if args.eval_all_checkpoints:
+                checkpoints = list(os.path.dirname(c) for c in sorted(glob.glob(args.output_dir + "/**/" + WEIGHTS_NAME, recursive=True)))
+                logging.getLogger("transformers.modeling_utils").setLevel(logging.WARN)  # Reduce logging
+            logger.info("Evaluate the following checkpoints: %s", checkpoints)
+            for checkpoint in checkpoints:
+                global_step = checkpoint.split("-")[-1] if len(checkpoints) > 1 else ""
+                prefix = checkpoint.split("/")[-1] if checkpoint.find("checkpoint") != -1 else ""
 
-            model = model_class.from_pretrained(checkpoint)
-            model.to(args.device)
-            result = evaluate(args, model, tokenizer, prefix=prefix)
-            result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
-            results.update(result)
+                model = model_class.from_pretrained(checkpoint)
+                model.to(args.device)
+                result = evaluate(args, model, tokenizer, prefix=prefix)
+                result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
+                results.update(result)
+
+        elif args.weight_sharing == "unshared":
+            tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
+            checkpoints = [args.output_dir]
+            if args.eval_all_checkpoints:
+                checkpoints = list(os.path.dirname(c) for c in sorted(glob.glob(args.output_dir + "/**/" + WEIGHTS_NAME, recursive=True)))
+                logging.getLogger("transformers.modeling_utils").setLevel(logging.WARN)  # Reduce logging
+            logger.info("Evaluate the following checkpoints: %s", checkpoints)
+            for checkpoint in checkpoints:
+                global_step = checkpoint.split("-")[-1] if len(checkpoints) > 1 else ""
+                prefix = checkpoint.split("/")[-1] if checkpoint.find("checkpoint") != -1 else ""
+
+                model = UnsharedModel()
+                model = model.load_state_dict(torch.load(args.output_dir))
+                tokenizer = tokenizer_class.from_pretrained(args.output_dir)
+                model.to(args.device)
+                result = evaluate(args, model, tokenizer, prefix=prefix)
+                result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
+                results.update(result)
+
 
     # Prediction
     if args.do_predict:
-        tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
-        model = model_class.from_pretrained(args.output_dir)
-        model.to(args.device)
+        if args.weight_sharing == "shared":
+            tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
+            model = model_class.from_pretrained(args.output_dir)
+            model.to(args.device)
+
+        elif args.weight_sharing == "unshared":
+            model = UnsharedModel()
+            model = model.load_state_dict(torch.load(args.output_dir))
+            tokenizer = tokenizer_class.from_pretrained(args.output_dir)
+            model.to(args.device)
+
         predict(args, model, tokenizer)
 
     return results

@@ -296,8 +296,9 @@ function claim_verification() {
   local pipeline_path=$2
   local cache_path=$3
   local force=$4
-  local model_type=$5
-  local model_name=$6
+  local model_type='bert' #$5
+  local model_name='bert-base-cased' #$6
+  local weight_sharing=$7
 
   local doc_ret_path="$pipeline_path/document-retrieval"
   local sent_ret_path="$pipeline_path/sentence-retrieval"
@@ -305,9 +306,10 @@ function claim_verification() {
   local db_path="$pipeline_path/build-db"
   local dataset_path="$fever_path/dataset"
 
-  local transformers_cache_path="$cache_path/transformers"
+  # local transformers_cache_path="$cache_path/transformers"
+  local transformers_cache_path="$cache_path/transformers/$weight_sharing"
 
-  local model_path="$claim_ver_path/model"
+  local model_path="$claim_ver_path/model/$weight_sharing"
   local db_file="$db_path/wikipedia.db"
 
   if (( $force != 0 )); then
@@ -336,6 +338,7 @@ function claim_verification() {
     python3 'claim-verification/model.py' \
         --model_type "$model_type" \
         --model_name_or_path "$model_name" \
+        --weight_sharing "$weight_sharing" \
         --max_seq_length 128 \
         --task_name 'claim_verification' \
         --output_dir "$model_path" \
@@ -486,6 +489,7 @@ function run() {
   # Read all the recognized flags and expected arguments.
   local -a pargs
   local flag_force=0
+  local flag_weight_sharing='shared'
   local flag_data='data'
   local flag_model_type='bert'
   local flag_model_name='bert-base-cased'
@@ -495,6 +499,7 @@ function run() {
       --data ) flag_data=$2; shift 2;;
       --model-type) flag_model_type=$2; shift 2;;
       --model-name) flag_model_name=$2; shift 2;;
+      --weight_sharing) flag_weight_sharing=$2; shift 2;;
       -* ) shift;;
       * ) pargs+=("$1"); shift;;
     esac
@@ -535,7 +540,7 @@ function run() {
     > >(tee -a "$PATH_D_LOGS/sentence_retrieval.log") 2>&1
   fi
   if [ -z $parg_task ] || [[ $parg_task == "claim_verification" ]]; then
-    claim_verification "$PATH_D_FEVER" "$PATH_D_PIPELINE" "$PATH_D_CACHE" $flag_force "$flag_model_type" "$flag_model_name" \
+    claim_verification "$PATH_D_FEVER" "$PATH_D_PIPELINE" "$PATH_D_CACHE" $flag_force "$flag_model_type" "$flag_model_name" "$flag_weight_sharing" \
     > >(tee -a "$PATH_D_LOGS/claim_verification.log") 2>&1
   fi
   if [ -z $parg_task ] || [[ $parg_task == "generate_submission" ]]; then

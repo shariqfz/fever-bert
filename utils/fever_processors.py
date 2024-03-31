@@ -35,6 +35,7 @@ def fever_convert_examples_to_features(
     pad_token=0,
     pad_token_segment_id=0,
     mask_padding_with_zero=True,
+    weight_sharing='shared',
 ):
     """
     Loads a data file into a list of ``InputFeatures``
@@ -72,32 +73,47 @@ def fever_convert_examples_to_features(
             logger.info("Using output mode %s for task %s" % (output_mode, task))
 
     for (ex_index, example) in enumerate(examples):
-        inputs = tokenizer.encode_plus(
-            example.text_a,
-            example.text_b,
-            add_special_tokens=True,
-            max_length=max_length,
-        )
-        input_ids, token_type_ids = inputs["input_ids"], inputs["token_type_ids"]
+        if weight_sharing == "shared":
+            inputs = tokenizer.encode_plus(
+                example.text_a,
+                example.text_b,
+                add_special_tokens=True,
+                max_length=max_length,
+            )
+            input_ids, token_type_ids, attention_mask = inputs["input_ids"], inputs["token_type_ids"], inputs["attention_mask"]
+
+        elif weight_sharing == "unshared":
+            inputs1 = tokenizer.encode_plus(example.text_a, add_special_tokens=True, max_length=max_length )
+            inputs2 = tokenizer.encode_plus(example.text_b, add_special_tokens=True, max_length=max_length )
+            input_ids1, token_type_ids1, attention_mask1 = inputs1["input_ids"], inputs1["token_type_ids"], inputs1["attention_mask"]
+            input_ids2, token_type_ids2, attention_mask2 = inputs2["input_ids"], inputs2["token_type_ids"], inputs2["attention_mask"]
+        else:
+            ValueError(f"weight_sharing parameter inappropriate: {weight_sharing}")
+            
 
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
         # tokens are attended to.
-        attention_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
+        # attention_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
 
         # Zero-pad up to the sequence length.
-        padding_length = max_length - len(input_ids)
-        if pad_on_left:
-            input_ids = ([pad_token] * padding_length) + input_ids
-            attention_mask = ([0 if mask_padding_with_zero else 1] * padding_length) + attention_mask
-            token_type_ids = ([pad_token_segment_id] * padding_length) + token_type_ids
-        else:
-            input_ids = input_ids + ([pad_token] * padding_length)
-            attention_mask = attention_mask + ([0 if mask_padding_with_zero else 1] * padding_length)
-            token_type_ids = token_type_ids + ([pad_token_segment_id] * padding_length)
-
+        # padding_length = max_length - len(input_ids)
+        # if pad_on_left:
+        #     input_ids = ([pad_token] * padding_length) + input_ids
+        #     attention_mask = ([0 if mask_padding_with_zero else 1] * padding_length) + attention_mask
+        #     token_type_ids = ([pad_token_segment_id] * padding_length) + token_type_ids
+        # else:
+        #     input_ids = input_ids + ([pad_token] * padding_length)
+        #     attention_mask = attention_mask + ([0 if mask_padding_with_zero else 1] * padding_length)
+        #     token_type_ids = token_type_ids + ([pad_token_segment_id] * padding_length)
+        input_ids = input_ids if input_ids else input_ids1
+        attention_mask = attention_mask if attention_mask else attention_mask1
+        token_type_ids = token_type_ids if token_type_ids else token_type_ids1
+        
         assert len(input_ids) == max_length, "Error with input length {} vs {}".format(len(input_ids), max_length)
         assert len(attention_mask) == max_length, "Error with input length {} vs {}".format(len(attention_mask), max_length)
         assert len(token_type_ids) == max_length, "Error with input length {} vs {}".format(len(token_type_ids), max_length)
+        
+        
 
         if output_mode == "classification":
             label_map = {label: i for i, label in enumerate(label_list)}
@@ -112,15 +128,29 @@ def fever_convert_examples_to_features(
             logger.info("guid: %s" % (example.guid))
             logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
             logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
-            logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
+            logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids])) if weight_sharing == 'shared' else None
             logger.info("label: %s (id = %d)" % (example.label, label))
 
-        yield InputFeatures(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            label=label,
-        )
+        if weight_sharing == 'shared':
+            yield InputFeatures(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                token_type_ids=token_type_ids,
+                label=label,
+            )
+        elif weight_sharing == 'unshared':
+            yield InputFeatures(
+                input_ids=input_ids1,
+                attention_mask=attention_mask1,
+                token_type_ids=token_type_ids1,
+                label=label,
+            ), InputFeatures(
+                input_ids=input_ids2,
+                attention_mask=attention_mask2,
+                token_type_ids=token_type_ids2,
+                label=label,
+            )
+
 
 
 def fever_compute_metrics(task_name, preds, labels):
@@ -200,11 +230,11 @@ class SentenceRetrievalProcessor(DataProcessor):
             lines = csv.reader(f, delimiter="\t")
             for (i, line) in enumerate(lines):
                 guid = "%s-%d" % (purpose, i)
-                title = process_title(line[2])
-                text_a = process_sent(line[1])
-                text_b = process_evid(line[4])
-                text_b = title + " : " + text_b
-                label = process_label(line[5]) if purpose != "predict" else self.get_dummy_label()
+                title = process_title(line[2])  # page
+                text_a = process_sent(line[1])  # claim
+                text_b = process_evid(line[4])  # sentence
+                text_b = title + " : " + text_b # claim + sentence
+                label = process_label(line[5]) if purpose != "predict" else self.get_dummy_label()  # 1/0 or -1
                 yield InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
 
     def get_length(self, file_path):
