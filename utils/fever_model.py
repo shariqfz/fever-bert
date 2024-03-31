@@ -345,6 +345,8 @@ def predict(args, model, tokenizer):
                             "input_ids2":      batch[0][1].long().to(args.device),
                             "attention_mask1": batch[1][0].to(args.device),
                             "attention_mask2": batch[1][1].to(args.device),
+                            "token_type_ids1" : batch[2][0].long().to(args.device),
+                            "token_type_ids2" : batch[2][1].long().to(args.device),
                             "labels":         batch[3].to(args.device)}
                 
                 outputs = model(**inputs)
@@ -589,7 +591,7 @@ def main():
     elif args.weight_sharing == "unshared":
         model = UnsharedModel(args.model_name_or_path,
                             from_tf=bool(".ckpt" in args.model_name_or_path),
-                            config=config,
+                            # config=BertConfig,
                             cache_dir=args.cache_dir if args.cache_dir else None)
 
     # if args.local_rank == 0:
