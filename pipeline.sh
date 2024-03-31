@@ -228,7 +228,7 @@ function sentence_retrieval() {
         --per_gpu_eval_batch_size=32
   fi
 
-  for filetype in {dev,train}; do
+  for filetype in {dev,test,train}; do
     local dataset_file="$dataset_path/$filetype.jsonl"
     local sent_ret_file="$sent_ret_path/sentences.predicted.$filetype.jsonl"
     local doc_ret_file="$doc_ret_path/documents.predicted.$filetype.jsonl"
