@@ -155,7 +155,7 @@ def train(args, model, tokenizer):
             elif args.weight_sharing == "unshared":
                 # print("btch size: ", len(batch))
                 # print("btch size: ", batch.shape)
-                print("btch size: ", batch[0].shape)
+                # print("btch size: ", batch[0].shape)
                 for i in range(3):
                     batch[i] = batch[i].permute(1, 0, 2)
                 inputs = {"input_ids1":      batch[0][0].long().to(args.device),
@@ -434,7 +434,7 @@ def load_and_cache_examples(args, task, tokenizer, file_path, purpose="train"):
                 all_token_type_ids[i][1] = torch.tensor(feature2.token_type_ids)
                 all_labels[i] = feature1.label
 
-        print("\n\nall_input_ids.shape: ",all_input_ids.shape, "\n\n")
+        # print("\n\nall_input_ids.shape: ",all_input_ids.shape, "\n\n")
         all_features_list = [all_input_ids, all_attention_mask, all_token_type_ids, all_labels]
 
         if args.local_rank in [-1, 0]:
