@@ -153,6 +153,8 @@ def train(args, model, tokenizer):
                         "labels":         batch[3].to(args.device)}
             
             elif args.weight_sharing == "unshared":
+                for i in range(3):
+                    batch[i] = batch[i].permute(1, 0, 2)
                 inputs = {"input_ids1":      batch[0][0].long().to(args.device),
                           "input_ids2":      batch[0][1].long().to(args.device),
                         "attention_mask1": batch[1][0].to(args.device),
@@ -273,6 +275,8 @@ def evaluate(args, model, tokenizer, prefix=""):
                         "labels":         batch[3].to(args.device)}
             
             elif args.weight_sharing == "unshared":
+                for i in range(3):
+                    batch[i] = batch[i].permute(1, 0, 2)
                 inputs = {"input_ids1":      batch[0][0].long().to(args.device),
                           "input_ids2":      batch[0][1].long().to(args.device),
                         "attention_mask1": batch[1][0].to(args.device),
@@ -345,6 +349,8 @@ def predict(args, model, tokenizer):
                             "labels":         batch[3].to(args.device)}
                 
                 elif args.weight_sharing == "unshared":
+                    for i in range(3):
+                        batch[i] = batch[i].permute(1, 0, 2)
                     inputs = {"input_ids1":      batch[0][0].long().to(args.device),
                             "input_ids2":      batch[0][1].long().to(args.device),
                             "attention_mask1": batch[1][0].to(args.device),
