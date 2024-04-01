@@ -83,10 +83,13 @@ def fever_convert_examples_to_features(
             input_ids, token_type_ids, attention_mask = inputs["input_ids"], inputs["token_type_ids"], inputs["attention_mask"]
 
         elif weight_sharing == "unshared":
-            inputs1 = tokenizer.encode_plus(example.text_a, add_special_tokens=True, max_length=max_length )
-            inputs2 = tokenizer.encode_plus(example.text_b, add_special_tokens=True, max_length=max_length )
+            inputs1 = tokenizer.encode_plus(example.text_a, add_special_tokens=True,  padding='max_length',
+                                            truncation=True, max_length=max_length )
+            inputs2 = tokenizer.encode_plus(example.text_b, add_special_tokens=True,  padding='max_length',
+                                            truncation=True, max_length=max_length )
             input_ids1, token_type_ids1, attention_mask1 = inputs1["input_ids"], inputs1["token_type_ids"], inputs1["attention_mask"]
             input_ids2, token_type_ids2, attention_mask2 = inputs2["input_ids"], inputs2["token_type_ids"], inputs2["attention_mask"]
+            input_ids, token_type_ids, attention_mask = input_ids1, token_type_ids1, attention_mask1
         else:
             ValueError(f"weight_sharing parameter inappropriate: {weight_sharing}")
             
@@ -105,9 +108,9 @@ def fever_convert_examples_to_features(
         #     input_ids = input_ids + ([pad_token] * padding_length)
         #     attention_mask = attention_mask + ([0 if mask_padding_with_zero else 1] * padding_length)
         #     token_type_ids = token_type_ids + ([pad_token_segment_id] * padding_length)
-        input_ids = input_ids if input_ids else input_ids1
-        attention_mask = attention_mask if attention_mask else attention_mask1
-        token_type_ids = token_type_ids if token_type_ids else token_type_ids1
+        # input_ids = input_ids if input_ids else input_ids1
+        # attention_mask = attention_mask if attention_mask else attention_mask1
+        # token_type_ids = token_type_ids if token_type_ids else token_type_ids1
         
         assert len(input_ids) == max_length, "Error with input length {} vs {}".format(len(input_ids), max_length)
         assert len(attention_mask) == max_length, "Error with input length {} vs {}".format(len(attention_mask), max_length)
@@ -139,7 +142,7 @@ def fever_convert_examples_to_features(
                 label=label,
             )
         elif weight_sharing == 'unshared':
-            yield InputFeatures(
+            yield (InputFeatures(
                 input_ids=input_ids1,
                 attention_mask=attention_mask1,
                 token_type_ids=token_type_ids1,
@@ -149,7 +152,7 @@ def fever_convert_examples_to_features(
                 attention_mask=attention_mask2,
                 token_type_ids=token_type_ids2,
                 label=label,
-            )
+            ))
 
 
 

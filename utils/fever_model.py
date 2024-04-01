@@ -153,6 +153,9 @@ def train(args, model, tokenizer):
                         "labels":         batch[3].to(args.device)}
             
             elif args.weight_sharing == "unshared":
+                # print("btch size: ", len(batch))
+                # print("btch size: ", batch.shape)
+                print("btch size: ", batch[0].shape)
                 for i in range(3):
                     batch[i] = batch[i].permute(1, 0, 2)
                 inputs = {"input_ids1":      batch[0][0].long().to(args.device),
@@ -383,7 +386,7 @@ def load_and_cache_examples(args, task, tokenizer, file_path, purpose="train"):
         list(filter(None, args.model_name_or_path.split("/"))).pop(),
         str(args.max_seq_length),
         str(task)))
-    if os.path.exists(cached_features_file) and not args.overwrite_cache:
+    if os.path.exists(cached_features_file) and not args.overwrite_cache and False:
         logger.info("Loading features from cached file %s", cached_features_file)
         all_features_list = torch.load(cached_features_file)
     else:
@@ -431,7 +434,7 @@ def load_and_cache_examples(args, task, tokenizer, file_path, purpose="train"):
                 all_token_type_ids[i][1] = torch.tensor(feature2.token_type_ids)
                 all_labels[i] = feature1.label
 
-            
+        print("\n\nall_input_ids.shape: ",all_input_ids.shape, "\n\n")
         all_features_list = [all_input_ids, all_attention_mask, all_token_type_ids, all_labels]
 
         if args.local_rank in [-1, 0]:
