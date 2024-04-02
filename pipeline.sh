@@ -541,7 +541,7 @@ function run() {
   fi
   if [ -z $parg_task ] || [[ $parg_task == "claim_verification" ]]; then
     claim_verification "$PATH_D_FEVER" "$PATH_D_PIPELINE" "$PATH_D_CACHE" $flag_force "$flag_model_type" "$flag_model_name" "$flag_weight_sharing" \
-    > >(tee -a "$PATH_D_LOGS/claim_verification.log") 2>&1
+    > >(tee -a "$PATH_D_LOGS/claim_verification_$flag_weight_sharing.log") 2>&1
   fi
   if [ -z $parg_task ] || [[ $parg_task == "generate_submission" ]]; then
     generate_submission "$PATH_D_FEVER" "$PATH_D_PIPELINE" "$PATH_D_CACHE" $flag_force \

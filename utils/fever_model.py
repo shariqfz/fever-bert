@@ -6,26 +6,23 @@
 # https://github.com/huggingface/transformers/blob/master/LICENSE
 """ Finetuning the library models for sequence classification on FEVER (Bert, XLM, XLNet, RoBERTa, Albert, XLM-RoBERTa)."""
 
-from __future__ import absolute_import, division, print_function
+from __future__ import print_function, division, absolute_import 
 
 import logging
 logging.disable(logging.WARNING)
 
-import argparse
 import glob
-import logging
+import argparse
 import os
 import sys
 sys.path.append(os.getcwd())
 
-import random
+import torch
 import json
+import random
 
 import numpy as np
-import torch
-from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
-                              TensorDataset)
-from torch.utils.data.distributed import DistributedSampler
+from torch.utils.data import TensorDataset, DataLoader, SequentialSampler, RandomSampler
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -34,38 +31,18 @@ except:
 
 from tqdm import tqdm, trange
 
-from transformers import (WEIGHTS_NAME, BertConfig,
-                                  BertForSequenceClassification, BertTokenizer,
-                                #   RobertaConfig,
-                                #   RobertaForSequenceClassification,
-                                #   RobertaTokenizer,
-                                #   XLMConfig, XLMForSequenceClassification,
-                                #   XLMTokenizer, XLNetConfig,
-                                #   XLNetForSequenceClassification,
-                                #   XLNetTokenizer,
-                                #   DistilBertConfig,
-                                #   DistilBertForSequenceClassification,
-                                #   DistilBertTokenizer,
-                                #   AlbertConfig,
-                                #   AlbertForSequenceClassification,
-                                #   AlbertTokenizer,
-                                #   XLMRobertaConfig,
-                                #   XLMRobertaForSequenceClassification,
-                                #   XLMRobertaTokenizer,
-                                )
+from transformers import BertConfig, BertForSequenceClassification, BertTokenizer
 
-from transformers import AdamW, get_linear_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup
+from torch.optim import AdamW
 
-from utils.fever_processors import fever_compute_metrics as compute_metrics
-from utils.fever_processors import fever_output_modes as output_modes
 from utils.fever_processors import fever_processors as processors
+from utils.fever_processors import fever_output_modes as output_modes
+from utils.fever_processors import fever_compute_metrics as compute_metrics
 from utils.fever_processors import fever_convert_examples_to_features as convert_examples_to_features
 from utils.unshared_model import UnsharedModel
 
 logger = logging.getLogger(__name__)
-
-# ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig, XLNetConfig, XLMConfig,
-#                                                                                 RobertaConfig, DistilBertConfig, AlbertConfig, XLMRobertaConfig)), ())
 
 MODEL_CLASSES = {
     "bert": (BertConfig, BertForSequenceClassification, BertTokenizer)
@@ -73,9 +50,9 @@ MODEL_CLASSES = {
 
 
 def set_seed(args):
-    random.seed(args.seed)
-    np.random.seed(args.seed)
     torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
     
 
 
@@ -90,7 +67,7 @@ def train(args, model, tokenizer):
     tb_writer = SummaryWriter()
 
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
-    train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
+    train_sampler = RandomSampler(train_dataset) 
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
 
     if args.max_steps > 0:
@@ -529,7 +506,7 @@ def main():
     # Setup logging
     logging.basicConfig(format = "%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
                         datefmt = "%m/%d/%Y %H:%M:%S",
-                        level = logging.INFO if args.local_rank in [-1, 0] else logging.WARN)
+                        level = logging.INFO)
     
     # Set seed
     set_seed(args)

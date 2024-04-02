@@ -79,6 +79,7 @@ def fever_convert_examples_to_features(
                 example.text_b,
                 add_special_tokens=True,
                 max_length=max_length,
+                padding='max_length',
             )
             input_ids, token_type_ids, attention_mask = inputs["input_ids"], inputs["token_type_ids"], inputs["attention_mask"]
 
