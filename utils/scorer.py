@@ -19,8 +19,17 @@ def check_predicted_evidence_format(instance):
             "Predicted evidence must be a list of (page<string>,line<int>) lists"
 
 
-def is_correct_label(instance):
-    return instance["label"].upper() == instance["predicted_label"].upper()
+def is_correct_label(instance, confusion_matrix):
+    pred_label = instance["predicted_label"].upper()
+    true_label = instance["label"].upper()
+
+    if true_label == pred_label :
+        confusion_matrix[true_label]["TP"] += 1
+    else:
+        confusion_matrix[true_label]["FN"] += 1
+        confusion_matrix[pred_label]["FP"] += 1
+
+    return true_label == pred_label
 
 
 def is_strictly_correct(instance, max_evidence=None):
@@ -90,7 +99,9 @@ def evidence_micro_recall(instance, max_evidence=None):
     this_recall_hits = 0.0
 
     if instance["label"].upper() != "NOT ENOUGH INFO":
-        all_evi = [[e[2], e[3]] for eg in instance["evidence"] for e in eg if e[3] is not None]
+        if len(instance["evidence"]) == 0 or all([len(eg) == 0 for eg in instance]):
+           return 1.0, 1.0
+
 
         predicted_evidence = instance["predicted_evidence"] if max_evidence is None else \
                                                                         instance["predicted_evidence"][:max_evidence]
@@ -130,6 +141,12 @@ def fever_score_micro_f1(predictions,actual=None, max_evidence=5):
     micro_recall = 0
     micro_recall_hits = 0
 
+    class_map = {"REFUTES": 0, "SUPPORTS": 1, "NOT ENOUGH INFO": 2}
+
+    confusion_matrix = {"REFUTES": {"TP": 0, "FP": 0, "FN": 0},
+                        "SUPPORTS": {"TP": 0, "FP": 0, "FN": 0},
+                        "NOT ENOUGH INFO": {"TP": 0, "FP": 0, "FN": 0}}
+                        
     for idx,instance in enumerate(predictions):
         assert 'predicted_evidence' in instance.keys(), 'evidence must be provided for the prediction'
 
@@ -143,31 +160,38 @@ def fever_score_micro_f1(predictions,actual=None, max_evidence=5):
 
         assert 'evidence' in instance.keys(), 'gold evidence must be provided'
 
-        if is_correct_label(instance):
+        if is_correct_label(instance, confusion_matrix):
             correct += 1.0
 
             if is_strictly_correct(instance, max_evidence):
                 strict+=1.0
 
-        micro_prec = evidence_micro_precision(instance)
-        micro_precision += micro_prec[0]
-        micro_precision_hits += micro_prec[1]
+        # micro_prec = evidence_micro_precision(instance)
+        # micro_precision += micro_prec[0]
+        # micro_precision_hits += micro_prec[1]
 
-        micro_rec = evidence_micro_recall(instance, max_evidence)
-        micro_recall += micro_rec[0]
-        micro_recall_hits += micro_rec[1]
+        # micro_rec = evidence_micro_recall(instance, max_evidence)
+        # micro_recall += micro_rec[0]
+        # micro_recall_hits += micro_rec[1]
 
-    total = len(predictions)
+    true_positives = sum([confusion_matrix[class_]["TP"] for class_ in class_map.keys() ])
+    false_positives = sum([confusion_matrix[class_]["FP"] for class_ in class_map.keys() ])
+    false_negatives = sum([confusion_matrix[class_]["FN"] for class_ in class_map.keys() ])
+    
+    denominator = true_positives +  (false_positives + false_negatives) / 2
+    micro_f1 = true_positives / denominator if denominator > 0 else 1.0
 
-    strict_score = strict / total
-    acc_score = correct / total
+    # total = len(predictions)
 
-    pr = (micro_precision / total) if total > 0 else 1.0
-    rec = (micro_recall / total) if total > 0 else 0.0
+    # strict_score = strict / total
+    # acc_score = correct / total
 
-    f1 = 2.0 * pr * rec / (pr + rec)
+    # pr = (micro_precision / total) if total > 0 else 1.0
+    # rec = (micro_recall / total) if total > 0 else 0.0
 
-    return strict_score, acc_score, pr, rec, f1
+    # f1 = 2.0 * pr * rec / (pr + rec)
+
+    return strict_score, acc_score, pr, rec, micro_f1
 
 
 def fever_score(predictions,actual=None, max_evidence=5):

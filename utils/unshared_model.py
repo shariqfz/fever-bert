@@ -39,20 +39,7 @@ class UnsharedModel(nn.Module):
         loss = nn.CrossEntropyLoss()(logits, labels)
         return loss, logits
 
-# Load the BERT tokenizer
-# tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
 
-# # Assume claims and evidences are pre-defined lists of claims and corresponding evidences
-# inputs1 = tokenizer(claims, padding=True, truncation=True, return_tensors="pt")
-# inputs2 = tokenizer(evidences, padding=True, truncation=True, return_tensors="pt")
-# labels = torch.tensor(labels)
 
-# # Create a DataLoader for our training set
-# dataset = TensorDataset(inputs1['input_ids'], inputs1['attention_mask'], inputs2['input_ids'], inputs2['attention_mask'], labels)
-# dataloader = DataLoader(dataset, sampler=RandomSampler(dataset), batch_size=32)
-
-# Load the model and specify the optimizer
-# model = UnsharedModel()
-# optimizer = AdamW(model.parameters(), lr=1e-5)
 
 

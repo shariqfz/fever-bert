@@ -350,8 +350,8 @@ function claim_verification() {
   fi
 
   if [ ! -f "$model_path/eval_results.txt" ]; then
-    local eval_file="$claim_ver_path/claims.golden.dev.small.tsv"
-    local sent_ret_file="$sent_ret_path/sentences.predicted.dev.small.jsonl"
+    local eval_file="$claim_ver_path/claims.golden.dev.tsv"
+    local sent_ret_file="$sent_ret_path/sentences.predicted.dev.jsonl"
 
     if [ ! -f "$eval_file" ]; then
       echo "● Generating evaluation examples from claims in $sent_ret_file..."

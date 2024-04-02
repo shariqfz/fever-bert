@@ -134,7 +134,7 @@ def main(db_file, max_pages_per_query, in_file, out_file, add_claim=True, parall
             ):
                 processed[line["id"]] = line
                 progress[line["id"]] = line
-                # time.sleep(0.5)
+               
         with open(os.path.join(path, out_file), "w+") as f2:
             for line in lines:
                 f2.write(json.dumps(processed[line["id"]]) + "\n")
