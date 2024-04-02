@@ -9,6 +9,7 @@ sys.path.append(os.getcwd())
 from collections import defaultdict
 
 from utils.scorer import fever_score
+from utils.scorer import fever_score_micro_f1
 from prettytable import PrettyTable
 
 def main(prediction_file, golden_file):
@@ -31,11 +32,12 @@ def main(prediction_file, golden_file):
 
     assert len(predictions) == len(actual), "The two file provided does not have the same number of lines"
 
-    score,acc,precision,recall,f1 = fever_score(predictions, actual)
+    score, acc, precision, recall, Macro_f1 = fever_score(predictions, actual)
+    _, _, _, _, Micro_f1 = fever_score_micro_f1(predictions, actual)
 
     tab = PrettyTable()
-    tab.field_names = ["OFEVER Score", "Label Accuracy", "Label Precision", "Label Recall", "Label F1"]
-    tab.add_row((round(score,4),round(acc,4), round(precision,4),round(recall,4), round(f1,4) ) )
+    tab.field_names = ["OFEVER Score", "Label Accuracy", "Label Precision", "Label Recall", "Label Macro F1", "Label Micro F1"]
+    tab.add_row((round(score,4),round(acc,4), round(precision,4),round(recall,4), round(Macro_f1,4), round(Micro_f1,4)  ) )
     print(tab)
 
 

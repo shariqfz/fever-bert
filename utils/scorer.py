@@ -85,6 +85,24 @@ def evidence_macro_recall(instance, max_evidence=None):
         return 0.0, 1.0
     return 0.0, 0.0
 
+def evidence_micro_recall(instance, max_evidence=None):
+    this_recall = 0.0
+    this_recall_hits = 0.0
+
+    if instance["label"].upper() != "NOT ENOUGH INFO":
+        all_evi = [[e[2], e[3]] for eg in instance["evidence"] for e in eg if e[3] is not None]
+
+        predicted_evidence = instance["predicted_evidence"] if max_evidence is None else \
+                                                                        instance["predicted_evidence"][:max_evidence]
+
+        for evidence_group in instance["evidence"]:
+            evidence = [[e[2], e[3]] for e in evidence_group]
+            if all([item in predicted_evidence for item in evidence]):
+                this_recall += 1.0
+            this_recall_hits += 1.0
+
+    return this_recall, this_recall_hits
+
 
 # Micro is not used. This code is just included to demostrate our model of macro/micro
 def evidence_micro_precision(instance):
@@ -101,6 +119,55 @@ def evidence_micro_precision(instance):
             this_precision_hits += 1.0
 
     return this_precision, this_precision_hits
+
+def fever_score_micro_f1(predictions,actual=None, max_evidence=5):
+    correct = 0
+    strict = 0
+
+    micro_precision = 0
+    micro_precision_hits = 0
+
+    micro_recall = 0
+    micro_recall_hits = 0
+
+    for idx,instance in enumerate(predictions):
+        assert 'predicted_evidence' in instance.keys(), 'evidence must be provided for the prediction'
+
+        #If it's a blind test set, we need to copy in the values from the actual data
+        if 'evidence' not in instance or 'label' not in instance:
+            assert actual is not None, 'in blind evaluation mode, actual data must be provided'
+            assert len(actual) == len(predictions), 'actual data and predicted data length must match'
+            assert 'evidence' in actual[idx].keys(), 'evidence must be provided for the actual evidence'
+            instance['evidence'] = actual[idx]['evidence']
+            instance['label'] = actual[idx]['label']
+
+        assert 'evidence' in instance.keys(), 'gold evidence must be provided'
+
+        if is_correct_label(instance):
+            correct += 1.0
+
+            if is_strictly_correct(instance, max_evidence):
+                strict+=1.0
+
+        micro_prec = evidence_micro_precision(instance)
+        micro_precision += micro_prec[0]
+        micro_precision_hits += micro_prec[1]
+
+        micro_rec = evidence_micro_recall(instance, max_evidence)
+        micro_recall += micro_rec[0]
+        micro_recall_hits += micro_rec[1]
+
+    total = len(predictions)
+
+    strict_score = strict / total
+    acc_score = correct / total
+
+    pr = (micro_precision / total) if total > 0 else 1.0
+    rec = (micro_recall / total) if total > 0 else 0.0
+
+    f1 = 2.0 * pr * rec / (pr + rec)
+
+    return strict_score, acc_score, pr, rec, f1
 
 
 def fever_score(predictions,actual=None, max_evidence=5):
@@ -151,3 +218,5 @@ def fever_score(predictions,actual=None, max_evidence=5):
     f1 = 2.0 * pr * rec / (pr + rec)
 
     return strict_score, acc_score, pr, rec, f1
+
+

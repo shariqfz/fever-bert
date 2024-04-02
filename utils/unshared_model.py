@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, Tenso
 from transformers import AdamW
 
 class UnsharedModel(nn.Module):
-    def __init__(self, model_name_or_path, from_tf, cache_dir):
+    def __init__(self, model_name_or_path='bert-base-cased', from_tf=False, cache_dir=None):
         super(UnsharedModel, self).__init__()
         self.encoder1 = BertModel.from_pretrained(model_name_or_path, from_tf=from_tf, cache_dir=cache_dir)
         self.encoder2 = BertModel.from_pretrained(model_name_or_path, from_tf=from_tf, cache_dir=cache_dir)

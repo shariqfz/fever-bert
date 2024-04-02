@@ -127,7 +127,7 @@ def fever_convert_examples_to_features(
             raise KeyError(output_mode)
 
         if ex_index < 5:
-            logger.info("*** Example ***")
+            logger.info("##### example sample #####")
             logger.info("guid: %s" % (example.guid))
             logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
             logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
@@ -233,10 +233,10 @@ class SentenceRetrievalProcessor(DataProcessor):
             lines = csv.reader(f, delimiter="\t")
             for (i, line) in enumerate(lines):
                 guid = "%s-%d" % (purpose, i)
-                title = process_title(line[2])  # page
+                docid = process_title(line[2])  # docid Text
                 text_a = process_sent(line[1])  # claim
                 text_b = process_evid(line[4])  # sentence
-                text_b = title + " : " + text_b # claim + sentence
+                text_b = docid + " : " + text_b # claim + sentence
                 label = process_label(line[5]) if purpose != "predict" else self.get_dummy_label()  # 1/0 or -1
                 yield InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
 

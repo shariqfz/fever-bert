@@ -108,9 +108,6 @@ function document_retrieval() {
   local db_path="$pipeline_path/build-db"
   local dataset_path="$fever_path/dataset"
 
-  local allen_cache_path="$cache_path/allen"
-  local nltk_cache_path="$cache_path/nltk"
-
   local db_file="$db_path/wikipedia.db"
 
   local max_pages_per_query=7
@@ -307,9 +304,9 @@ function claim_verification() {
   local dataset_path="$fever_path/dataset"
 
   # local transformers_cache_path="$cache_path/transformers"
-  local transformers_cache_path="$cache_path/transformers/$weight_sharing"
+  local transformers_cache_path="$cache_path/$weight_sharing/transformers"
 
-  local model_path="$claim_ver_path/model/$weight_sharing"
+  local model_path="$claim_ver_path/$weight_sharing/model"
   local db_file="$db_path/wikipedia.db"
 
   if (( $force != 0 )); then
@@ -353,8 +350,8 @@ function claim_verification() {
   fi
 
   if [ ! -f "$model_path/eval_results.txt" ]; then
-    local eval_file="$claim_ver_path/claims.golden.dev.tsv"
-    local sent_ret_file="$sent_ret_path/sentences.predicted.dev.jsonl"
+    local eval_file="$claim_ver_path/claims.golden.dev.small.tsv"
+    local sent_ret_file="$sent_ret_path/sentences.predicted.dev.small.jsonl"
 
     if [ ! -f "$eval_file" ]; then
       echo "● Generating evaluation examples from claims in $sent_ret_file..."
@@ -381,6 +378,7 @@ function claim_verification() {
   fi
 
   for filetype in {dev,test,train}; do
+    # local $filetype="$filetype.small"
     local dataset_file="$dataset_path/$filetype.jsonl"
     local sent_ret_file="$sent_ret_path/sentences.predicted.$filetype.jsonl"
     local claim_ver_file="$claim_ver_path/claims.predicted.$filetype.jsonl"
