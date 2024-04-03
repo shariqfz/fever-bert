@@ -1,0 +1,26 @@
+nohup: ignoring input
+● Finetuning transformer model...
+2024-04-03 14:57:38.456095: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:9261] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2024-04-03 14:57:38.456128: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:607] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2024-04-03 14:57:38.549970: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1515] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2024-04-03 14:57:38.756539: I tensorflow/core/platform/cpu_feature_guard.cc:182] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2024-04-03 14:57:39.534987: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+Traceback (most recent call last):
+  File "/home/fred/Desktop/CS728_A2/fever-bert/claim-verification/model.py", line 9, in <module>
+    main()
+  File "/home/fred/Desktop/CS728_A2/fever-bert/utils/fever_model.py", line 489, in main
+    raise ValueError("Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(args.output_dir))
+ValueError: Output directory (data/pipeline/claim-verification/unshared/model) already exists and is not empty. Use --overwrite_output_dir to overcome.
+● Evaluating predictions in data/pipeline/claim-verification/claims.predicted.dev.jsonl...
+{'REFUTES': {'TP': 1728, 'FP': 478, 'FN': 4938}, 'SUPPORTS': {'TP': 2472, 'FP': 1874, 'FN': 4194}, 'NOT ENOUGH INFO': {'TP': 5170, 'FP': 8276, 'FN': 1496}}
+0.46854685468546853
+0.46854685468546853
+TP: 9370
+FP: 10628
+FN: 10628
++--------------+----------------+-----------------+--------------+----------------+----------------+
+| OFEVER Score | Label Accuracy | Label Precision | Label Recall | Label Macro F1 | Label Micro F1 |
++--------------+----------------+-----------------+--------------+----------------+----------------+
+|    0.4681    |     0.4685     |       1.0       |    0.9982    |     0.9991     |     0.4685     |
++--------------+----------------+-----------------+--------------+----------------+----------------+

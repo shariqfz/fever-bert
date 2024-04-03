@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
+import json
 import argparse
 import bisect
 import csv
-import json
-import os
 import sys
+import os
 sys.path.append(os.getcwd())
 
 from collections import defaultdict

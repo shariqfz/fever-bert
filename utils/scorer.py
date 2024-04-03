@@ -133,6 +133,19 @@ def evidence_micro_precision(instance):
 
     return this_precision, this_precision_hits
 
+def get_reciprocal_rank(instance):
+    
+    reciprocal_rank = 0
+
+    if instance["label"].upper() != "NOT ENOUGH INFO":
+        all_evi = [[e[2], e[3]] for eg in instance["evidence"] for e in eg if e[3] is not None]
+
+        for idx, prediction in enumerate(instance["predicted_evidence"]):
+            if prediction in all_evi:
+                reciprocal_rank += 1 / (idx + 1)
+
+    return reciprocal_rank
+
 def fever_score_micro_f1(predictions,actual=None, max_evidence=5):
     correct = 0
     strict = 0
@@ -142,6 +155,8 @@ def fever_score_micro_f1(predictions,actual=None, max_evidence=5):
 
     micro_recall = 0
     micro_recall_hits = 0
+
+    reciprocal_rank = 0
 
     class_map = {"REFUTES": 0, "SUPPORTS": 1, "NOT ENOUGH INFO": 2}
 
@@ -178,22 +193,38 @@ def fever_score_micro_f1(predictions,actual=None, max_evidence=5):
         micro_recall += micro_rec[0]
         micro_recall_hits += micro_rec[1]
 
+
         for k in recall_at_k.keys():
             recalled, total_true =  micro_rec[0], micro_rec[1]
             rc = recalled / total_true if total_true > 0 else 1.0
             recall_at_k[k] += (rc if total_true < k else recalled / k)
+        
+        reciprocal_rank += get_reciprocal_rank(instance)
 
     true_positives = sum([confusion_matrix[class_]["TP"] for class_ in class_map.keys() ])
     false_positives = sum([confusion_matrix[class_]["FP"] for class_ in class_map.keys() ])
     false_negatives = sum([confusion_matrix[class_]["FN"] for class_ in class_map.keys() ])
     
-    denominator = true_positives +  (false_positives + false_negatives) / 2
-    micro_f1 = true_positives / denominator if denominator > 0 else 1.0
+    # denominator = true_positives +  (false_positives + false_negatives) / 2
+    # micro_f1 = true_positives / denominator if denominator > 0 else 1.0
+
+    precision = true_positives / (true_positives + false_positives) if true_positives + false_positives > 0 else 0
+    recall = true_positives / (true_positives + false_negatives) if true_positives + false_negatives > 0 else 0     
+    micro_f1 = 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
+  
+    print(confusion_matrix)
+    print(precision)
+    print(recall)
+    print(f"TP: {true_positives}")
+    print(f"FP: {false_positives}")
+    print(f"FN: {false_negatives}")
 
     total = len(predictions)
 
     strict_score = strict / total
     acc_score = correct / total
+    mrr = reciprocal_rank / total
+
     for k in recall_at_k.keys():
         recall_at_k[k] /= total if total > 0 else 1.0
 
@@ -202,7 +233,7 @@ def fever_score_micro_f1(predictions,actual=None, max_evidence=5):
 
     # f1 = 2.0 * pr * rec / (pr + rec)
 
-    return strict_score, acc_score, pr, recall_at_k, micro_f1
+    return strict_score, acc_score, mrr, recall_at_k, micro_f1
 
 
 def fever_score(predictions,actual=None, max_evidence=5):

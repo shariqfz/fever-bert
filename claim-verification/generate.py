@@ -15,7 +15,7 @@ from functools import reduce
 import numpy as np
 from tqdm import tqdm
 
-from utils.fever_doc_db import FeverDocDB
+from utils.doc_db import WikiDB
 
 
 def get_all_sentences(docs, weighted_sentences):
@@ -70,7 +70,7 @@ def main(db_file, in_file, out_file, prediction=None):
     path = os.getcwd()
     outfile = open(os.path.join(path, out_file), "w+")
 
-    db = FeverDocDB(db_file)
+    db = WikiDB(db_file)
 
     with open(os.path.join(path, in_file), "r") as f:
         nlines = reduce(lambda a, b: a + b, map(lambda x: 1, f.readlines()), 0)

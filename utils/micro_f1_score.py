@@ -22,7 +22,11 @@ def micro_f1(predictions):
   # micro f1 = true_positives / (true_positives +  (1/2)*(false_positives + false_negatives))
   # reference: https://stephenallwright.com/micro-vs-macro-f1-score/
   
-  denominator = true_positives +  (false_positives + false_negatives) / 2
-  micro_f1 = true_positives / denominator if denominator > 0 else 1.0         
+  # denominator = true_positives +  (false_positives + false_negatives) / 2
+  # micro_f1 = true_positives / denominator if denominator > 0 else 1.0    
 
+  precision = true_positives / (true_positives + false_positives) if true_positives + false_positives > 0 else 0
+  recall = true_positives / (true_positives + false_negatives) if true_positives + false_negatives > 0 else 0     
+  micro_f1 = 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
+  
 return micro_f1
